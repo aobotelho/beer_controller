@@ -1,4 +1,4 @@
 pandas
-streamlit = 1.40
+streamlit==1.40
 matplotlib
 altair
