@@ -162,5 +162,5 @@ cython_debug/
 #.idea/
 
 
-data/runs/*
-!data/runs/dummy
+data/brew_sessions/*
+!data/brew_sessions/dummy

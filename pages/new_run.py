@@ -5,7 +5,8 @@ import os
 from datetime import datetime
 import json
 from time import sleep
-import numpy as np
+from random import randrange
+pd.set_option('future.no_silent_downcasting', True)
 
 
 BREW_SESSION_FOLDER = './data/brew_sessions'
@@ -33,7 +34,7 @@ RECIRCULATE_ON = {
 
 CREATE_DUMMY_BREW_SESSION = True
 
-DATAFRAME_COLUMNS = ['timestamp','temperature','pump_on_off','recirculate_on_off','resistance_power']
+DATAFRAME_COLUMNS = ['timestamp','temperature','pump_on_off','recirculate_on_off','resistance_power','ramp_name', 'temperature_setpoint','ramp_time']
 
 def load_brew_sessions_names() -> list:
     return [x.replace(f"{BREW_SESSION_FOLDER}/", "") for x in glob(f"{BREW_SESSION_FOLDER}/*")]
@@ -102,6 +103,7 @@ if __name__ == '__main__':
                     "time": st.session_state[f'ramp_time_{num}']
                 } for num in range(st.session_state['ramps'])]
 
+
                 def start_brew_session():
                     with open(f"{BREW_SESSION_FOLDER}/{st.session_state['new_brew_session_id']}/config.json","w") as fout: 
                         json.dump({
@@ -110,6 +112,7 @@ if __name__ == '__main__':
                         }, fout)
                     st.session_state['CONFIG_STARTED']      = False
                     st.session_state['START_BREW_SESSION']  = True
+                    st.session_state['CURRENT_RAMP_COUNTER'] = 0
                     
                 
                 st.button("Start brew session?", on_click=start_brew_session)
@@ -151,54 +154,89 @@ if __name__ == '__main__':
         with col_3:
             st.write("\n\n\n   ")
             st.slider("Resistor power", 0, 100, key = "RESISTOR_POWER",format="%d%%")
+            # Insert function here for PWM
         
-        st.button("START", key = "START", use_container_width = True)
-        if st.session_state['START'] or 'BREW_SESSION_STARTED' in st.session_state:
+        def start_brew_session():
             st.session_state['BREW_SESSION_STARTED'] = True
 
-            if CREATE_DUMMY_BREW_SESSION:
-                from random import randrange
-                
-                try:
-                    df_log = pd.read_csv(
-                        f"{BREW_SESSION_FOLDER}/{st.session_state['new_brew_session_id']}/log.csv",
-                        sep = ","
-                    )
-                    df_log.timestamp = pd.to_datetime(df_log.timestamp)
-                except:
-                    df_log = pd.DataFrame(columns = DATAFRAME_COLUMNS)
-                
-                df_log = pd.concat(
-                    [
-                        df_log,
-                        pd.DataFrame(
-                            [[
-                                datetime.now(),
-                                randrange(1,100,1),
-                                PUMP_ON[st.session_state['PUMP_ON_OFF']]['PIN_MODE'],
-                                RECIRCULATE_ON[st.session_state['RECIRCULATE_ON_OFF']]['PIN_MODE'],
-                                st.session_state['RESISTOR_POWER']
-                            ]],
-                            columns = DATAFRAME_COLUMNS
-                        )
-                    ], ignore_index= True)
 
+        if not 'BREW_SESSION_STARTED' in st.session_state:
+            st.button("START", key = "START", use_container_width = True, on_click=start_brew_session)
+
+        if 'BREW_SESSION_STARTED' in st.session_state:             
                 
-                df_log.to_csv(f"{BREW_SESSION_FOLDER}/{st.session_state['new_brew_session_id']}/log.csv",sep = ",", index = False)
-                
-                df_log = df_log.tail(20)
+            try:
+                df_log = pd.read_csv(
+                    f"{BREW_SESSION_FOLDER}/{st.session_state['new_brew_session_id']}/log.csv",
+                    sep = ","
+                )
+                df_log.timestamp = pd.to_datetime(df_log.timestamp)
+
+                time_in_ramp = (datetime.now() - df_log.loc[df_log['ramp_name'] == st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['name'],'timestamp'].min()).total_seconds()
+                plot_progress_bar = True        
+                if time_in_ramp > float(st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['time']):
+                    st.session_state['CURRENT_RAMP_COUNTER'] += 1
+                    plot_progress_bar = False
+                    if st.session_state['CURRENT_RAMP_COUNTER'] > len(st.session_state['ramps_params']):
+                        st.stop()
+                if plot_progress_bar:
+                    st.progress(time_in_ramp / float(st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['time']))
+            except:
+                df_log = pd.DataFrame(columns = DATAFRAME_COLUMNS)
+
+            
+            new_temp = randrange(1,100,1) if CREATE_DUMMY_BREW_SESSION else None
+            
+            df_log = pd.concat(
+                [
+                    df_log,
+                    pd.DataFrame(
+                        [[
+                            datetime.now(),
+                            new_temp,
+                            PUMP_ON[st.session_state['PUMP_ON_OFF']]['PIN_MODE'],
+                            RECIRCULATE_ON[st.session_state['RECIRCULATE_ON_OFF']]['PIN_MODE'],
+                            st.session_state['RESISTOR_POWER'],
+                            st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['name'],
+                            float(st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['temp']),
+                            st.session_state['ramps_params'][st.session_state['CURRENT_RAMP_COUNTER']]['time'] 
+                        ]],
+                        columns = DATAFRAME_COLUMNS
+                    )
+                ], ignore_index= True)
+
+            
+            df_log.to_csv(f"{BREW_SESSION_FOLDER}/{st.session_state['new_brew_session_id']}/log.csv",sep = ",", index = False)
+            
+            
+            df_log = df_log.tail(20)
+            
+            if df_log.shape[0] > 0:
                 
                 df_pump_on_off_change = df_log.loc[df_log['pump_on_off'].diff().fillna(True)]
-                on_values = df_pump_on_off_change.loc[df_pump_on_off_change['pump_on_off'],'timestamp'].values
-                off_values = df_pump_on_off_change.loc[~df_pump_on_off_change['pump_on_off'],'timestamp'].values
+                
+                try:
+                    on_values =  df_pump_on_off_change.loc[df_pump_on_off_change['pump_on_off'], 'timestamp'].values
+                except:
+                    on_values = []                
+                try:
+                    off_values = df_pump_on_off_change.loc[~df_pump_on_off_change['pump_on_off'],'timestamp'].values
+                except:
+                    off_values = []
 
 
                 df_recirculate_on_off_change = df_log.loc[df_log['recirculate_on_off'].diff().fillna(True)]
-                on_recirculate_values  = df_recirculate_on_off_change.loc[ df_recirculate_on_off_change['recirculate_on_off'],'timestamp'].values
-                off_recirculate_values = df_recirculate_on_off_change.loc[~df_recirculate_on_off_change['recirculate_on_off'],'timestamp'].values
+                try:
+                    on_recirculate_values  = df_recirculate_on_off_change.loc[ df_recirculate_on_off_change['recirculate_on_off'],'timestamp'].values
+                except:
+                    on_recirculate_values = []
+                try:
+                    off_recirculate_values = df_recirculate_on_off_change.loc[~df_recirculate_on_off_change['recirculate_on_off'],'timestamp'].values
+                except:
+                    off_recirculate_values = []
+                
 
-
-                ax = df_log.plot.line(x = 'timestamp',y= 'temperature', rot= 45)
+                ax  = df_log.plot.line(x = 'timestamp',y= ['temperature','temperature_setpoint'], rot= 45)
                 
                 first = True
                 for item in on_values:
@@ -245,5 +283,5 @@ if __name__ == '__main__':
                 
                 
                 
-                sleep(1)
-                st.rerun()
+            sleep(1)
+            st.rerun()
