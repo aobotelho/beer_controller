@@ -12,22 +12,22 @@ IMAGES_FOLDER = './data/images'
 PUMP_ON = {
     False:{
         "IMAGE_NAME": "off_button.png",
-        "PIN_MODE": False
+        "PIN_MODE": 0
     },
     True:{
         "IMAGE_NAME": "on_button.png",
-        "PIN_MODE": True
+        "PIN_MODE": 1
     },
     "PIN_NUMBER": 4
 }
 RECIRCULATE_ON = {
     False:{
         "IMAGE_NAME": "off_button.png",
-        "PIN_MODE": False
+        "PIN_MODE": 0
     },
     True:{
         "IMAGE_NAME": "on_button.png",
-        "PIN_MODE": True
+        "PIN_MODE": 1
     },
     "PIN_NUMBER": 15
 }
