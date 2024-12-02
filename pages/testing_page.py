@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from glob import glob
-import RPi.GPIO as GPIO
+from rpi_hardware_pwm import HardwarePWM
 from datetime import datetime
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -36,7 +36,7 @@ DATAFRAME_COLUMNS = ['timestamp','temperature','pump_on_off','recirculate_on_off
 def load_brew_sessions_names() -> list:
     return [x.replace(f"{BREW_SESSION_FOLDER}/", "") for x in glob(f"{BREW_SESSION_FOLDER}/*")]
 
-PWN_PIN = 12
+PWN_CHANNEL = 0
 
 if __name__ == '__main__':
     ########################################################################################################################
@@ -62,12 +62,12 @@ if __name__ == '__main__':
 
     
     col_1, col_2, col_3 = st.columns([3,3,4])
-    GPIO.setwarnings(False)			#disable warnings
-    GPIO.setmode(GPIO.BOARD)		#set pin numbering system
-    GPIO.setup(PWN_PIN,GPIO.OUT)
-    pi_pwm = GPIO.PWM(PWN_PIN,1000)		#create PWM instance with frequency
+    
+    pwm = HardwarePWM(pwm_channel=PWN_CHANNEL, hz=50, chip=2)
+
+
     if 'RESISTOR_POWER' not in st.session_state:
-        pi_pwm.start(0)
+        pwm.start(0)
 
     with col_1:
         if 'PUMP_ON_OFF' not in st.session_state:
@@ -103,4 +103,4 @@ if __name__ == '__main__':
     with col_3:
         st.write("\n\n\n   ")
         st.slider("Resistor power", 0, 100, key = "RESISTOR_POWER",format="%d%%")
-        pi_pwm.start(st.session_state['RESISTOR_POWER'])
+        pwm.start(st.session_state['RESISTOR_POWER'])
