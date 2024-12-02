@@ -63,8 +63,9 @@ if __name__ == '__main__':
     #
     ########################################################################################################################
     
-    pwm = HardwarePWM(pwm_channel=PWN_CHANNEL, hz=50, chip=2)
+    
     if 'RESISTOR_POWER' not in st.session_state:
+        pwm = HardwarePWM(pwm_channel=PWN_CHANNEL, hz=50, chip=2)
         pwm.start(0)
 
     if 'PUMP_ON_OFF' not in st.session_state:
