@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from glob import glob
 from rpi_hardware_pwm import HardwarePWM
+import gpiod
 from datetime import datetime
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -16,7 +17,8 @@ PUMP_ON = {
     True:{
         "IMAGE_NAME": "on_button.png",
         "PIN_MODE": True
-    }
+    },
+    "PIN_NUMBER": 4
 }
 RECIRCULATE_ON = {
     False:{
@@ -26,7 +28,8 @@ RECIRCULATE_ON = {
     True:{
         "IMAGE_NAME": "on_button.png",
         "PIN_MODE": True
-    }
+    },
+    "PIN_NUMBER": 15
 }
 
 CREATE_DUMMY_BREW_SESSION = True
@@ -37,6 +40,7 @@ def load_brew_sessions_names() -> list:
     return [x.replace(f"{BREW_SESSION_FOLDER}/", "") for x in glob(f"{BREW_SESSION_FOLDER}/*")]
 
 PWN_CHANNEL = 0
+
 
 if __name__ == '__main__':
     ########################################################################################################################
@@ -59,16 +63,19 @@ if __name__ == '__main__':
     #
     ########################################################################################################################
     
-
-    
-    col_1, col_2, col_3 = st.columns([3,3,4])
-    
     pwm = HardwarePWM(pwm_channel=PWN_CHANNEL, hz=50, chip=2)
-
-
     if 'RESISTOR_POWER' not in st.session_state:
         pwm.start(0)
 
+    if 'PUMP_ON_OFF' not in st.session_state:
+        chip = gpiod.Chip('gpiochip4')
+        pump_var = chip.get_line(PUMP_ON['PIN_NUMBER'])
+        recirc_var = chip.get_line(RECIRCULATE_ON['PIN_NUMBER'])
+
+        pump_var.request(consumer="PUMP", type=gpiod.LINE_REQ_DIR_OUT)
+        recirc_var.request(consumer="RECIRC", type=gpiod.LINE_REQ_DIR_OUT)
+
+    col_1, col_2, col_3 = st.columns([3,3,4])
     with col_1:
         if 'PUMP_ON_OFF' not in st.session_state:
             st.session_state['PUMP_ON_OFF'] = PUMP_ON[False]['PIN_MODE']
@@ -103,4 +110,8 @@ if __name__ == '__main__':
     with col_3:
         st.write("\n\n\n   ")
         st.slider("Resistor power", 0, 100, key = "RESISTOR_POWER",format="%d%%")
-        pwm.start(st.session_state['RESISTOR_POWER'])
+        
+    
+    pump_var.set_value(st.session_state['PUMP_ON_OFF'])
+    recirc_var.set_value(st.session_state['RECIRCULATE_ON_OFF'])
+    pwm.start(st.session_state['RESISTOR_POWER'])
