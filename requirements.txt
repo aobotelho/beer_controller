@@ -1,5 +1,4 @@
 pandas
 streamlit==1.40
 matplotlib
-altair
 rpi_hardware_pwm
