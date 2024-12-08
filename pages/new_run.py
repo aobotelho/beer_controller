@@ -58,7 +58,6 @@ if __name__ == '__main__':
                     "time": st.session_state[f'ramp_time_{num}']
                 } for num in range(st.session_state["ramps"])]
 
-
                 def start_brew_session():
                     with open(f'{constants["BREW_SESSION_FOLDER"]}/{st.session_state["new_brew_session_id"]}/config.json',"w") as fout: 
                         json.dump({
@@ -89,7 +88,7 @@ if __name__ == '__main__':
             
                 st.image(f'{constants["IMAGES_FOLDER"]}/{ constants["PUMP_ON"][st.session_state["PUMP_ON_OFF"]]["IMAGE_NAME"] }')
 
-                st.button('ON / OFf', on_click=toggle_pump, key = 'PUMP', use_container_width = True)
+                st.button('ON / OFF', on_click=toggle_pump, key = 'PUMP', use_container_width = True)
         
         with col_2:
             if 'RECIRCULATE_ON_OFF' not in st.session_state:
@@ -140,25 +139,28 @@ if __name__ == '__main__':
 
             
             new_temp = randrange(1,100,1) if constants["CREATE_DUMMY_BREW_SESSION"] else None
-            
-            df_log = pd.concat(
-                [
-                    df_log,
-                    pd.DataFrame(
-                        [[
-                            datetime.now(),
-                            new_temp,
-                            constants["PUMP_ON"][st.session_state["PUMP_ON_OFF"]]["PIN_MODE"],
-                            constants["RECIRCULATE_ON"][st.session_state["RECIRCULATE_ON_OFF"]]["PIN_MODE"],
-                            st.session_state["RESISTOR_POWER"],
-                            st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["name"],
-                            float(st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["temp"]),
-                            st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["time"] 
-                        ]],
-                        columns = constants["DATAFRAME_COLUMNS"]
-                    )
-                ], ignore_index= True)
+            df_new_temp = pd.DataFrame(
+                            [[
+                                datetime.now(),
+                                new_temp,
+                                constants["PUMP_ON"][st.session_state["PUMP_ON_OFF"]]["PIN_MODE"],
+                                constants["RECIRCULATE_ON"][st.session_state["RECIRCULATE_ON_OFF"]]["PIN_MODE"],
+                                st.session_state["RESISTOR_POWER"],
+                                st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["name"],
+                                float(st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["temp"]),
+                                st.session_state["ramps_params"][st.session_state["CURRENT_RAMP_COUNTER"]]["time"] 
+                            ]],
+                            columns = constants["DATAFRAME_COLUMNS"]
+                        )
 
+            if not df_log.empty:
+                df_log = pd.concat(
+                    [
+                        df_log,
+                        df_new_temp
+                    ], ignore_index= True)
+            else:
+                df_log = df_new_temp.copy()
             
             df_log.to_csv(f'{constants["BREW_SESSION_FOLDER"]}/{st.session_state["new_brew_session_id"]}/log.csv',sep = ',', index = False)
             
