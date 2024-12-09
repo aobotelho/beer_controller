@@ -21,10 +21,10 @@ def print_header():
 
     pass
 
-def plot_temperature(df_to_plot, show_pump_on_off = False, show_recirc_on_off = False):
+def plot_temperature(df_to_plot, show_pump_on_off:bool = False, show_recirc_on_off:bool = False):
     
     if show_pump_on_off:
-        df_pump_on_off_change = df_to_plot.loc[df_to_plot["pump_on_off"].diff().fillna(True)]       
+        df_pump_on_off_change = df_to_plot.loc[df_to_plot["pump_on_off"].diff().astype('bool').fillna(True)]       
         on_values =  df_pump_on_off_change.loc[df_pump_on_off_change["pump_on_off"], 'timestamp'].values
         off_values = df_pump_on_off_change.loc[~df_pump_on_off_change["pump_on_off"],'timestamp'].values
     else:
@@ -33,7 +33,7 @@ def plot_temperature(df_to_plot, show_pump_on_off = False, show_recirc_on_off = 
 
 
     if show_recirc_on_off:
-        df_recirculate_on_off_change = df_to_plot.loc[df_to_plot["recirculate_on_off"].diff().fillna(True)]
+        df_recirculate_on_off_change = df_to_plot.loc[df_to_plot["recirculate_on_off"].diff().astype('bool').fillna(True)]
         on_recirculate_values  = df_recirculate_on_off_change.loc[ df_recirculate_on_off_change["recirculate_on_off"],'timestamp'].values
         off_recirculate_values = df_recirculate_on_off_change.loc[~df_recirculate_on_off_change["recirculate_on_off"],'timestamp'].values
     else:
@@ -78,3 +78,12 @@ def plot_temperature(df_to_plot, show_pump_on_off = False, show_recirc_on_off = 
     ax.legend()
 
     st.pyplot(ax.figure)
+
+def import_constants(constants_path = './constants.json'):
+    constants = json.load(open(constants_path))
+    constants["PUMP_ON"][False] = constants["PUMP_ON"]["False"]
+    constants["PUMP_ON"][True] = constants["PUMP_ON"]["True"]
+    constants["RECIRCULATE_ON"][False] = constants["RECIRCULATE_ON"]["False"]
+    constants["RECIRCULATE_ON"][True] = constants["RECIRCULATE_ON"]["True"]
+
+    return constants

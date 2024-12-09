@@ -20,5 +20,6 @@
             "PIN_MODE": true
         }},
     "CREATE_DUMMY_BREW_SESSION": true,
-    "DATAFRAME_COLUMNS": ["timestamp","temperature","pump_on_off","recirculate_on_off","resistance_power","ramp_name", "temperature_setpoint","ramp_time"]
+    "DATAFRAME_COLUMNS": ["timestamp","temperature","pump_on_off","recirculate_on_off","resistance_power","ramp_name", "temperature_setpoint","ramp_time"], 
+    "PWN_CHANNEL": 0
 }
