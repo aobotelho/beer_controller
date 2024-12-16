@@ -3,14 +3,36 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 from common_functions import import_constants
+import glob
+
 
 class Temp_Beer_controller:
     def __init__(self):
+
         self.constants = import_constants()
+        base_dir = '/sys/bus/w1/devices/'
+        device_folder = glob.glob(base_dir + '28*')[0]
+        self.device_file = device_folder + '/w1_slave'
         pass
+    def read_temp_raw(self):
+        f = open(self.device_file, 'r')
+        lines = f.readlines()
+        f.close()
+        return lines
+
+    def read_temp_ds18b20(self):
+        lines = self.read_temp_raw()
+        while lines[0].strip()[-3:] != 'YES':
+            time.sleep(0.2)
+            lines = self.read_temp_raw()
+        equals_pos = lines[1].find('t=')
+        if equals_pos != -1:
+            temp_string = lines[1][equals_pos+2:]
+            temp_c = float(temp_string) / 1000.0
+        return temp_c
 
     def get_temp(self,dummy_read = True):
-        return randrange(30,41,1) if dummy_read else None
+        return randrange(30,41,1) if dummy_read else self.read_temp_ds18b20()
 
     def read_temp_file(self):
         try:
